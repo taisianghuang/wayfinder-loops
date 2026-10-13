@@ -36,8 +36,11 @@ CI 綠了 Implementer 會自己 merge、自己關票、自己解鎖下一批—�
 「👀 待你 review」,你不用碰(看板上它們顯示「⚡ 實作中」)。
 
 整份 spec 的票全部併完後,Implementer 會在整合分支跑全套測試,開**一個** spec→main
-的 draft PR。這一個才會進「👀 待你 review」。你 review 這一個、merge 這一個,
-spec 票就關了。一份 spec 只需要你動手一次。
+的 draft PR。這一個才會進「👀 待你 review」。
+每張批次 PR 在收割前都先經過一個獨立的 reviewer agent:它直接 commit 修正、判斷這張是
+單向門還是雙向門。spec→main PR 的 body 最上面會彙整成「審這裡」清單——只有列在那裡的
+單向門(migration、權限、LINE 推播、ERP 寫回、API 契約)需要你細看,其餘可以快速掃過。
+你 review 這一個、merge 這一個,spec 票就關了。一份 spec 只需要你動手一次。
 
 ## 丟新想法進系統
 
