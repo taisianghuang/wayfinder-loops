@@ -1,0 +1,35 @@
+name: dispatch-on-decision
+
+# Fires a repository_dispatch when a human applies any decision:* label.
+# This is a hook point: today nothing consumes it (the Resolver loop polls);
+# later a webhook bridge / self-hosted runner can subscribe to `decision-made`
+# to wake the Resolver immediately instead of waiting for its next tick.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+
+jobs:
+  dispatch:
+    if: startsWith(github.event.label.name, 'decision:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit decision-made dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cat <<EOF | gh api -X POST "repos/$REPO/dispatches" --input -
+          {
+            "event_type": "decision-made",
+            "client_payload": {
+              "issue_number": ${{ github.event.issue.number }},
+              "issue_url": "${{ github.event.issue.html_url }}",
+              "label": "${{ github.event.label.name }}"
+            }
+          }
+          EOF
