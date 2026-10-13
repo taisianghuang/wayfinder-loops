@@ -1,0 +1,105 @@
+name: sync-project-status
+
+# One-way mirror: issue facts (labels / assignee / linked PR / open-closed)
+# -> Project Status field. This workflow is the ONLY writer of Status.
+# Nothing may ever read Status back to make decisions.
+#
+# Required configuration:
+#   vars.PROJECT_URL      e.g. https://github.com/orgs/TaihemaoOrg/projects/3
+#   secrets.PROJECT_TOKEN classic PAT with `project` + `repo` scope
+#                         (github.token cannot write org-level Projects)
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled, assigned, unassigned, closed, reopened]
+
+permissions:
+  issues: read
+  pull-requests: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute status from issue facts
+        id: compute
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          issue=$(gh api "repos/$REPO/issues/$NUM")
+          labels=$(jq -r '[.labels[].name]' <<<"$issue")
+          state=$(jq -r '.state' <<<"$issue")
+          assigned=$(jq -r '.assignees | length > 0' <<<"$issue")
+
+          has() { jq -e --arg l "$1" 'index($l) != null' <<<"$labels" >/dev/null; }
+          has_prefix() { jq -e --arg p "$1" 'map(startswith($p)) | any' <<<"$labels" >/dev/null; }
+
+          owner="${REPO%%/*}"; name="${REPO##*/}"
+          open_prs=$(gh api graphql \
+            -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){closedByPullRequestsReferences(first:10,includeClosedPrs:false){totalCount}}}}' \
+            -f o="$owner" -f r="$name" -F n="$NUM" \
+            --jq '.data.repository.issue.closedByPullRequestsReferences.totalCount')
+
+          status=""
+          if   [ "$state" = "closed" ];             then status="✔️ 已關閉"
+          elif has "agent:blocked";                 then status="🚫 卡住"
+          elif [ "$open_prs" -gt 0 ];               then status="👀 待你 review"
+          elif has "agent:in-progress";             then status="⚡ 實作中"
+          elif has "agent:implement";               then status="🚀 可實作"
+          elif has "agent:queued";                  then status="📋 排隊中"
+          elif has "decision:discuss";              then status="💬 討論中"
+          elif has_prefix "decision:";              then status="✅ 已決定,待收斂"
+          elif has "wayfinder:research";            then status="🤖 查證中"
+          elif has "wayfinder:grilling" || has "wayfinder:prototype"; then
+            if [ "$assigned" = "true" ]; then status="⏳ 等你決定"; else status="🔍 準備選項中"; fi
+          elif has "wayfinder:task"; then
+            if [ "$assigned" = "true" ]; then status="⏳ 等你決定"; else status="🤖 查證中"; fi
+          elif has "wayfinder:map";                 then status="🗺️ 規劃中"
+          # Free-plan org has no Auto-add workflow: unlabeled new ideas on the
+          # planning repo enter the board here instead.
+          elif [ "$REPO" = "TaihemaoOrg/planning" ]; then status="💡 收件匣"
+          fi
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "content_id=$(jq -r '.node_id' <<<"$issue")" >> "$GITHUB_OUTPUT"
+          echo "computed: ${status:-<no mapping, skipping>}"
+
+      - name: Write Status to Project
+        if: steps.compute.outputs.status != ''
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PROJECT_URL: ${{ vars.PROJECT_URL }}
+          STATUS: ${{ steps.compute.outputs.status }}
+          CONTENT_ID: ${{ steps.compute.outputs.content_id }}
+        run: |
+          set -euo pipefail
+          org=$(sed -E 's#https://github.com/orgs/([^/]+)/projects/([0-9]+).*#\1#' <<<"$PROJECT_URL")
+          pnum=$(sed -E 's#https://github.com/orgs/([^/]+)/projects/([0-9]+).*#\2#' <<<"$PROJECT_URL")
+
+          pid=$(gh api graphql \
+            -f query='query($org:String!,$num:Int!){organization(login:$org){projectV2(number:$num){id}}}' \
+            -f org="$org" -F num="$pnum" --jq '.data.organization.projectV2.id')
+
+          field=$(gh api graphql \
+            -f query='query($pid:ID!){node(id:$pid){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}' \
+            -f pid="$pid" --jq '.data.node.field')
+          field_id=$(jq -r '.id' <<<"$field")
+          option_id=$(jq -r --arg s "$STATUS" '.options[] | select(.name == $s) | .id' <<<"$field")
+
+          if [ -z "$option_id" ]; then
+            echo "::error::Status option '$STATUS' not found in the project's Status field. Add it (see LOOP.md field spec)."
+            exit 1
+          fi
+
+          # addProjectV2ItemById is idempotent: returns the existing item if already added
+          item_id=$(gh api graphql \
+            -f query='mutation($pid:ID!,$cid:ID!){addProjectV2ItemById(input:{projectId:$pid,contentId:$cid}){item{id}}}' \
+            -f pid="$pid" -f cid="$CONTENT_ID" --jq '.data.addProjectV2ItemById.item.id')
+
+          gh api graphql \
+            -f query='mutation($pid:ID!,$iid:ID!,$fid:ID!,$oid:String!){updateProjectV2ItemFieldValue(input:{projectId:$pid,itemId:$iid,fieldId:$fid,value:{singleSelectOptionId:$oid}}){projectV2Item{id}}}' \
+            -f pid="$pid" -f iid="$item_id" -f fid="$field_id" -f oid="$option_id" >/dev/null
+          echo "set '$STATUS'"
