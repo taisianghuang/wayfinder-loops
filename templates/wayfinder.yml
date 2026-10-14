@@ -1,0 +1,31 @@
+# wayfinder-loops 組織層設定。放在 planning repo 根目錄,檔名固定 wayfinder.yml。
+# 欄位說明:references/config.md
+version: 1
+project_url: https://github.com/orgs/my-org/projects/1
+
+code_repos:
+  - repo: my-org/api
+    dir: api                         # 在 workspace_dir 底下
+    ci: make ci                      # 本地 CI 對應指令,全綠才算過
+    ci_optional:
+      - when: docker                 # docker info 成功才跑
+        run: make integration
+
+  - repo: my-org/web
+    dir: web
+    ci: pnpm check
+    generated:                       # 合併衝突時不手解:取 main 的版本再重新產生
+      - paths: [packages/api-client/openapi.json, packages/api-client/src/generated/]
+        regenerate: pnpm codegen
+    prototype_guide: prototype-guides/web.md   # planning repo 內的路徑,選用
+
+one_way_doors:                       # 追加在預設清單之後,選用
+  - 對使用者發送的推播訊息
+
+limits:
+  per_round: 3
+
+models:
+  implementer_default: sonnet
+  implementer_max: opus
+  reviewer: opus

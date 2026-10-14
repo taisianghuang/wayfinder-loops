@@ -2,7 +2,9 @@ name: promote-queued
 
 # When an issue closes as completed, promote its dependents:
 # agent:queued -> agent:implement once every blocker is closed.
-# Sub-issues are refused (agent:blocked) - decision tickets are never auto-promoted.
+# Sub-issues are refused (agent:blocked) unless the parent lives in PLANNING:
+# decision tickets are never auto-promoted, but every spec-train implementation
+# ticket hangs under its spec ticket over there, so that link is expected.
 # A ticket labeled agent:queued is checked immediately, so frontier tickets
 # (zero blockers at creation) are promoted without waiting for a close event.
 # workflow_dispatch re-sweeps every open agent:queued issue in this repo
@@ -30,11 +32,21 @@ jobs:
           # dependency crosses repos; same-repo promotion works with github.token.
           GH_TOKEN: ${{ secrets.ORG_AUTOMATION_TOKEN || github.token }}
           REPO: ${{ github.repository }}
+          # Ideas, maps, decision tickets and specs all live here. A parent in
+          # this repo is the ticket's spec; a parent anywhere else is not.
+          PLANNING: ${{ vars.PLANNING_REPO }}
           EVENT: ${{ github.event_name }}
           ACTION: ${{ github.event.action }}
           ISSUE_NUM: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
+
+          # Without PLANNING every parented ticket would be refused and the train
+          # would stall silently - fail loudly instead.
+          if [ -z "$PLANNING" ]; then
+            echo "::error::Repository variable PLANNING_REPO is not set (owner/name of the planning repo)."
+            exit 1
+          fi
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             candidates=$(gh api "repos/$REPO/issues?labels=agent%3Aqueued&state=open&per_page=100" --paginate --jq '.[].url')
@@ -58,13 +70,19 @@ jobs:
             num=$(sed -E 's#.*/repos/([^/]+)/([^/]+)/issues/([0-9]+)$#\3#' <<<"$url")
 
             parent=$(gh api graphql \
-              -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){parent{number}}}}' \
-              -f o="$owner" -f r="$name" -F n="$num" --jq '.data.repository.issue.parent.number // empty')
+              -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){parent{number repository{nameWithOwner}}}}}' \
+              -f o="$owner" -f r="$name" -F n="$num" \
+              --jq '.data.repository.issue.parent | if . then "\(.repository.nameWithOwner)#\(.number)" else empty end')
 
-            if [ -n "$parent" ]; then
+            # Two different things wear a parent link. A spec-train ticket hangs
+            # under its spec ticket in PLANNING - expected, and refusing it stalls
+            # the whole train. A parent
+            # anywhere else, this repo included, means the ticket is somebody's
+            # decomposition artifact and no loop should implement it.
+            if [ -n "$parent" ] && [ "${parent%#*}" != "$PLANNING" ]; then
               gh issue edit "$num" --repo "$owner/$name" --remove-label "agent:queued" --add-label "agent:blocked"
               gh issue comment "$num" --repo "$owner/$name" --body \
-                "🤖 [promote-queued] Refused to auto-promote: this is a sub-issue of #$parent. Sub-issues are decision/decomposition artifacts, not implementation tickets. Remove the parent link or promote manually."
+                "🤖 [promote-queued] Refused to auto-promote: this is a sub-issue of $parent, which is not a spec ticket in $PLANNING. Sub-issues are decision/decomposition artifacts, not implementation tickets. Remove the parent link or promote manually."
               continue
             fi
 
