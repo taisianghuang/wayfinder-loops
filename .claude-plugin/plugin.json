@@ -1,0 +1,22 @@
+{
+  "name": "wayfinder-loops",
+  "version": "0.1.0",
+  "description": "把模糊想法變成 map、決策票、spec、實作票與 PR 的 GitHub 自動化工作流:五條 /loop(cartographer、resolver、researcher、implementer、prototyper),人只做決策與最後一次審查。",
+  "author": { "name": "taisianghuang", "url": "https://github.com/taisianghuang" },
+  "repository": "https://github.com/taisianghuang/wayfinder-loops",
+  "license": "MIT",
+  "keywords": ["wayfinder", "github-projects", "loop", "automation", "spec", "code-review"],
+  "dependencies": ["mattpocock-skills@mattpocock"],
+  "userConfig": {
+    "planning_repo": {
+      "type": "string",
+      "title": "Planning repo",
+      "description": "放想法、map、決策票與 wayfinder.yml 的 GitHub repo,格式 owner/name"
+    },
+    "workspace_dir": {
+      "type": "directory",
+      "title": "工作區資料夾",
+      "description": "各 code repo 的本機 clone 放在這個資料夾底下;loop 只在這裡面工作"
+    }
+  }
+}
