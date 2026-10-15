@@ -4,8 +4,9 @@ name: sync-project-status
 # -> Project Status field. This workflow is the ONLY writer of Status.
 # Nothing may ever read Status back to make decisions.
 #
-# Required configuration:
-#   vars.PROJECT_URL      e.g. https://github.com/orgs/TaihemaoOrg/projects/3
+# Required configuration (set on every repo this workflow runs in):
+#   vars.PROJECT_URL      org Project URL, e.g. https://github.com/orgs/my-org/projects/1
+#   vars.PLANNING_REPO    the planning repo, owner/name, e.g. my-org/planning
 #   secrets.PROJECT_TOKEN classic PAT with `project` + `repo` scope
 #                         (github.token cannot write org-level Projects)
 
@@ -27,6 +28,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           NUM: ${{ github.event.issue.number }}
+          PLANNING_REPO: ${{ vars.PLANNING_REPO }}
         run: |
           set -euo pipefail
           issue=$(gh api "repos/$REPO/issues/$NUM")
@@ -60,7 +62,7 @@ jobs:
           elif has "wayfinder:map";                 then status="🗺️ 規劃中"
           # Free-plan org has no Auto-add workflow: unlabeled new ideas on the
           # planning repo enter the board here instead.
-          elif [ "$REPO" = "TaihemaoOrg/planning" ]; then status="💡 收件匣"
+          elif [ "$REPO" = "$PLANNING_REPO" ]; then status="💡 收件匣"
           fi
 
           echo "status=$status" >> "$GITHUB_OUTPUT"

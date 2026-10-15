@@ -39,13 +39,13 @@ CI 綠了 Implementer 會自己 merge、自己關票、自己解鎖下一批—�
 的 draft PR。這一個才會進「👀 待你 review」。
 每張批次 PR 在收割前都先經過一個獨立的 reviewer agent:它直接 commit 修正、判斷這張是
 單向門還是雙向門。spec→main PR 的 body 最上面會彙整成「審這裡」清單——只有列在那裡的
-單向門(migration、權限、LINE 推播、ERP 寫回、API 契約)需要你細看,其餘可以快速掃過。
+單向門(migration、權限、對外發送、金流、API 契約,加上 `wayfinder.yml` 的 `one_way_doors` 追加的類別)需要你細看,其餘可以快速掃過。
 你 review 這一個、merge 這一個,spec 票就關了。一份 spec 只需要你動手一次。
 
 ## 丟新想法進系統
 
-在 **`TaihemaoOrg/planning`** 開一張 issue,**什麼 label 都不用加**,把模糊的想法寫下來就好——
-不用知道它歸前端還是後端,那是管線自己會回答的問題。Cartographer 下一輪會接手:
+在**你的 planning repo** 開一張 issue,**什麼 label 都不用加**,把模糊的想法寫下來就好——
+不用知道它歸哪個 code repo,那是管線自己會回答的問題。Cartographer 下一輪會接手:
 建 map、拆決策票、把第一批問題送到「等你決定」。
 
 從看板丟也可以:「**+ Add item**」打完字後,對那張卡按 **convert to issue → 選 planning**
@@ -55,7 +55,7 @@ CI 綠了 Implementer 會自己 merge、自己關票、自己解鎖下一批—�
 開好的想法會立刻出現在「**💡 收件匣**」欄——看到它在那裡就代表機器已收到,
 Cartographer 下一輪會把它變成 map(移到「🗺️ 規劃中」)和第一批決策票。
 
-code repo(backend / frontend)裡你自己的筆記 issue 不受影響——管線只認 planning。
+code repo 裡你自己的筆記 issue 不受影響——管線只認 planning。
 
 ## 給 PM / SA:你完全不需要離開 Project
 
@@ -74,34 +74,36 @@ code repo(backend / frontend)裡你自己的筆記 issue 不受影響——管�
 所以也可以改用 wrapper 腳本,每一輪都開全新的 `claude -p` session、跑完即退:
 
 ```bash
-~/wayfinder-loops/scripts/run-loop.sh resolver 600
-~/wayfinder-loops/scripts/run-loop.sh cartographer 1200
-~/wayfinder-loops/scripts/run-loop.sh researcher 900
+wayfinder-run-loop resolver 600
+wayfinder-run-loop cartographer 1200
+wayfinder-run-loop researcher 900
 ```
+
+(腳本是 plugin 裡的 `bin/wayfinder-run-loop`;不在 PATH 上就用完整路徑。)
 
 代價:不能在 session 裡插話(要溝通就去 issue 上留言——本來就該這樣)、
 headless 無法互動授權(腳本內建各 loop 的工具白名單)。
 **implementer 與 prototyper 例外**:它們要寫程式、跑測試、發 Artifact 頁,權限列不完,
-建議照模式 A 用互動式跑。log 在 `~/wayfinder-loops/logs/`。
+建議照模式 A 用互動式跑。log 在 `~/.wayfinder-loops/logs/`(可用環境變數 `WAYFINDER_LOG_DIR` 改)。
 
 ### 模式 A:互動式 /loop(五個終端機,各一條)
 
 ```bash
-cd ~/wayfinder-lab && claude
+cd <工作區> && claude
 ```
 
-(`~/wayfinder-lab/` 是實驗場:code repo 的獨立 clone 都在裡面,implementer 只在
+(工作區 = 安裝 plugin 時填的 `workspace_dir`,是實驗場:code repo 的獨立 clone 都在裡面,implementer 只在
 這裡面工作,不碰 home 下的日常工作區;整個資料夾刪掉即可重來。)
 
 然後分別執行:
 
 | 終端機 | 指令 | 節奏 |
 |---|---|---|
-| 1 | `/loop 10m /resolver` | 最勤——人類決定要立刻被消化 |
-| 2 | `/loop 20m /cartographer` | 開票、收斂 map |
-| 3 | `/loop 15m /researcher` | AFK 查證 |
-| 4 | `/loop 15m /implementer` | 實作 + draft PR |
-| 5 | `/loop 30m /prototyper` | 你說「畫」之後做原型,一輪一張 |
+| 1 | `/loop 10m /wayfinder-loops:resolver` | 最勤——人類決定要立刻被消化 |
+| 2 | `/loop 20m /wayfinder-loops:cartographer` | 開票、收斂 map |
+| 3 | `/loop 15m /wayfinder-loops:researcher` | AFK 查證 |
+| 4 | `/loop 15m /wayfinder-loops:implementer` | 實作 + draft PR |
+| 5 | `/loop 30m /wayfinder-loops:prototyper` | 你說「畫」之後做原型,一輪一張 |
 
 Resolver 必須跑得比 Cartographer 勤:新 fog 是票關掉之後才冒出來的。
 
