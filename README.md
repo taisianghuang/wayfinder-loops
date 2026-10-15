@@ -49,7 +49,7 @@ flowchart LR
 | planning repo | 放想法、map、決策票、spec 與 `wayfinder.yml` 的 repo。 |
 | code repo | 放程式碼、實作票與 PR 的 repo。可以有多個。 |
 | map | 記錄一個想法的目標、已做的決定與未定問題的 issue。 |
-| 決策票 | 要求人做一個決定的 issue。附有選項表與建議。 |
+| 決策票 | map 中一個待決問題的 issue。由人做決定,或由 researcher 查證事實。附有選項表與建議。 |
 | 實作票 | 要求 agent 實作一項變更的 issue。 |
 | 整合分支 | 一個 spec 的所有變更先合併到的分支,名稱為 `spec/<編號>-<名稱>`。 |
 | 批次 PR | 實作票的 PR。目標分支是整合分支。人不審查批次 PR。 |
