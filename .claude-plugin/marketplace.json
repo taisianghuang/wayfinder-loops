@@ -1,0 +1,15 @@
+{
+  "name": "wayfinder-loops",
+  "owner": { "name": "taisianghuang", "url": "https://github.com/taisianghuang" },
+  "description": "wayfinder-loops:用 GitHub Issues + Project 看板 + 五條 Claude Code /loop 跑的產品開發工作流。",
+  "allowCrossMarketplaceDependenciesOn": ["mattpocock"],
+  "plugins": [
+    {
+      "name": "wayfinder-loops",
+      "source": "./",
+      "description": "五條 /loop 把想法推進到 PR,人只做決策與最後一次審查。",
+      "category": "productivity",
+      "keywords": ["wayfinder", "github-projects", "loop", "automation"]
+    }
+  ]
+}

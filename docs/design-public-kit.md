@@ -1,6 +1,6 @@
 # 設計:把 wayfinder-loops 做成可安裝的公開 kit
 
-狀態:草稿,待審(2026-10-13)
+狀態:已核准(2026-10-14);第一階段實作中。實作與本文不同處以 `references/` 與各 SKILL.md 為準。
 
 ## 目標
 
@@ -26,7 +26,7 @@
 | `~/wayfinder-workspace/` 本機 clone 位置 | implementer、prototyper、cartographer | 機器設定 `workspace_dir` + `code_repos[].dir` |
 | `uv run nox -s ci`、`pnpm check`、`nox -s integration` | implementer(4 處) | `code_repos[].ci` / `ci_optional` |
 | frontend 產生檔衝突改跑 `pnpm codegen` | implementer(2 處) | `code_repos[].generated` |
-| 原型慣例(`apps/<app>/src/features/.../prototype/`、`pnpm boundaries`、390×844 截圖、wt-35 前例) | prototyper | 各 code repo 自己的 `docs/agents/prototype.md`(選用);kit 只留通用流程 |
+| 原型慣例(`apps/<app>/src/features/.../prototype/`、`pnpm boundaries`、390×844 截圖、wt-35 前例) | prototyper | planning repo 內的原型指南,由 `wayfinder.yml` 的 `code_repos[].prototype_guide` 指過去(選用);kit 只留通用流程。放 planning repo 是為了不必改動 code repo |
 | backend 的 `arch-reviewer.md`、Delivery Rules 當過渡審查標準 | implementer 步驟 3b | 拿掉;reviewer 只讀 repo 的 `CODING_STANDARDS.md`(選用) |
 | 單向門清單(migration、LINE 推播、ERP 寫回…) | implementer 步驟 3b | kit 給通用預設,`wayfinder.yml` 的 `one_way_doors` 可以覆寫或追加 |
 | `~/wayfinder-loops/templates/...`、`~/wayfinder-loops/scripts/...` 絕對路徑 | cartographer、prototyper | `${CLAUDE_PLUGIN_ROOT}/...` |
@@ -92,7 +92,7 @@ skill 內文用 `${user_config.planning_repo}` 取得。
 
 ```yaml
 version: 1
-project_url: https://github.com/orgs/my-org/projects/3
+project_url: https://github.com/orgs/my-org/projects/2
 
 code_repos:
   - repo: my-org/api
@@ -127,7 +127,6 @@ kit 預設的單向門清單:資料庫 migration、資料刪除或不可逆改�
 | 檔案 | 誰讀 | 沒有時 |
 |---|---|---|
 | `CODING_STANDARDS.md` | reviewer | 只審 spec、會說謊的測試、Fowler smell baseline |
-| `docs/agents/prototype.md` | prototyper | 用通用預設:開發模式才出現的路由、手機與桌機兩種截圖 |
 | `docs/agents/*.md`(mattpocock 的 setup 產物) | mattpocock skills | 照 mattpocock 自己的行為 |
 
 ## `/wayfinder-loops:setup` 做什麼
