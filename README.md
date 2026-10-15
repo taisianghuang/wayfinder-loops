@@ -100,7 +100,7 @@ flowchart LR
 
    注意:執行 `claude plugin list --json`,`installPath` 欄位是 plugin 的安裝資料夾。
 
-5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單在報告書第 07 章。
+5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單在報告書第 03 章。
 
    警告:Status 值必須與清單完全相同,包含 emoji 與空格。不同時,看板不會更新。
 
@@ -210,7 +210,7 @@ flowchart LR
 
 | 文件 | 內容 |
 | --- | --- |
-| [報告書](https://taisianghuang.github.io/wayfinder-loops-guide/) | 設計理由、角色、label、看板、設計取捨 |
+| [報告書](https://taisianghuang.github.io/wayfinder-loops-guide/) | 專案介紹、角色、看板管理、建立工作流 |
 | [LOOP.md](LOOP.md) | 人的日常操作 |
 | [references/config.md](references/config.md) | 設定欄位 |
 | [references/contract.md](references/contract.md) | 所有 loop 共用的規則 |
