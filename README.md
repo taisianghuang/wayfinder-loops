@@ -1,181 +1,227 @@
 # wayfinder-loops
 
-**讓 PM 只丟想法、點決策,工程師只審最後一張 PR 的 GitHub 自動化工作流。**
+wayfinder-loops 是一個 Claude Code plugin。它用 GitHub Issues 與 GitHub Project 看板,把一個想法推進到合併進 main 的程式碼。
 
-wayfinder-loops 是一個 Claude Code plugin。它在你的 GitHub Issues 與 Project 看板上跑五條 `/loop`:把模糊的想法拆成地圖(map)與決策票、查證外部事實、把定案的決策寫成 spec、切成實作票、平行實作並開 PR、經獨立 reviewer 審過後收割進整合分支。人類只出現在兩個地方:**在看板上點一個決策 label**,以及**審整份 spec 的那一張 PR**。
+完整說明請看報告書:https://taisianghuang.github.io/wayfinder-loops-guide/
 
-建立在 [mattpocock/skills](https://github.com/mattpocock/skills) 的 wayfinder、to-spec、to-tickets、implement 之上。
+## 說明
+
+### 用途
+
+wayfinder-loops 讓 agent 做開 ticket、查證、實作、審查與合併 batch PR。人只做兩件事:
+
+1. 在 decision ticket 上選一個選項。
+2. 審查並合併 integration PR。
+
+### 組成
+
+wayfinder-loops 有五條 loop 與一個 agent。每條 loop 依固定間隔執行一輪。
+
+| 名稱 | 種類 | 工作 |
+| --- | --- | --- |
+| cartographer | loop | 把想法寫成 map 與 decision ticket。決策完成後,寫 spec 與 implementation ticket。 |
+| resolver | loop | 讀人在 decision ticket 上的選擇。記錄結論並關閉 decision ticket。 |
+| researcher | loop | 查證外部事實。把結果寫在 decision ticket 上並關閉。 |
+| implementer | loop | 實作 implementation ticket,開 batch PR,合併 batch PR 到 integration branch,開 integration PR。 |
+| prototyper | loop | 人要求原型時,做原型頁與截圖。 |
+| reviewer | agent | 審查每個 batch PR。修正問題,判斷風險,把 PR 設為 ready。implementer 派出 reviewer。 |
+
+GitHub label 是唯一的狀態來源。loop 不保存狀態。看板欄位由 workflow 依 label 計算。
+
+### 流程
 
 ```mermaid
 flowchart LR
-  idea[💡 想法<br/>planning issue] --> map[🗺️ map<br/>Cartographer]
-  map --> tickets[決策票<br/>附決策封包]
-  tickets -->|你點 decision:*| resolved[✅ 已決定<br/>Resolver]
-  tickets -.->|AFK 查證| research[🤖 Researcher]
-  tickets -.->|你說「畫」| proto[🎨 Prototyper<br/>可點的原型頁]
-  resolved --> spec[spec + 實作票<br/>Cartographer]
-  spec --> impl[⚡ Implementer<br/>平行實作 → 批次 PR]
-  impl --> review[🔍 獨立 reviewer<br/>修正 + 單向門判斷]
-  review --> integ[整合分支 spec/*]
-  integ --> pr[👀 spec→main PR<br/>你審這一張]
+  idea["想法"] --> map["map 與 decision ticket"]
+  map -->|"人選擇選項"| spec["spec 與 implementation ticket"]
+  spec --> pr["batch PR"]
+  pr -->|"reviewer 審查"| branch["integration branch"]
+  branch --> final["integration PR"]
+  final -->|"人審查並合併"| main["main"]
 ```
 
-## 適合誰
+## 名詞
 
-- 小團隊,PM / SA 不碰程式碼,但要能自己丟需求、做決策。
-- 已經用 GitHub Issues 管需求,願意用 GitHub Project 看板。
-- 有一台能長時間開著 Claude Code 的機器,code repo 有能在本機跑完的 CI 指令。
+本文件中每個名詞只有一個意思。
 
-**不適合**:沒有本機 CI 指令的 repo(批次 PR 的驗證全靠它)、GitHub 以外的 issue tracker、不能讓 agent 以你的 GitHub 帳號開票與開 PR 的環境。
+| 名詞 | 意思 |
+| --- | --- |
+| planning repo | 放想法、map、decision ticket、spec 與 `wayfinder.yml` 的 repo。 |
+| code repo | 放程式碼、implementation ticket 與 PR 的 repo。可以有多個。 |
+| map | 記錄一個想法的目標、已做的決定與未定問題的 issue。 |
+| decision ticket | map 中一個待決問題的 issue。由人做決定,或由 researcher 查證事實。附有選項表與建議。 |
+| implementation ticket | 要求 agent 實作一項變更的 issue。 |
+| integration branch | 一個 spec 的所有變更先合併到的分支,名稱為 `spec/<編號>-<名稱>`。 |
+| batch PR | implementation ticket 的 PR。目標分支是 integration branch。人不審查 batch PR。 |
+| integration PR | 從 integration branch 到 main 的 PR。每個 spec 只有一個。人審查這個 PR。 |
+| one-way door | 合併後不能撤回的變更。例如:資料庫 migration、資料刪除、權限變更、對外發送訊息。 |
 
-## 為什麼
+## 需求
 
-AI agent 讓「開 PR」變便宜,瓶頸於是移到「人來決定」與「人來審」。這套流程把人的時間只花在這兩件事上,其餘交給三層把關:
-
-1. **本地確定性檢查**:每張批次 PR 都要跑完你設定的 CI 指令,紅燈不收。
-2. **獨立 reviewer**:實作與審查分兩個 context。reviewer 只拿到 diff,對照 `CODING_STANDARDS.md`(選用)與票的規格直接 commit 修正,並判斷這張 PR 是單向門還是雙向門。
-3. **人類審查一次**:整份 spec 進 main 之前開一張 PR,body 最上面列出「審這裡」清單,只有單向門(migration、權限、對外發送…)需要細看。
-
-## 五條 loop
-
-| Loop | 做什麼 | 建議頻率 |
-|---|---|---|
-| `resolver` | 讀你在決策票上的 label 或留言,記錄結論、關票、回報 map;`decision:discuss` 時回覆你的疑慮 | 10 分鐘 |
-| `cartographer` | 新想法開成 map 與決策票;收斂 map;決策都定了就寫 spec、切實作票 | 20 分鐘 |
-| `researcher` | 純 AFK:查證外部事實,結果貼回票上並結案 | 15 分鐘 |
-| `implementer` | 收割批次 PR、認領實作票、平行派工、派獨立 reviewer、維護 spec→main PR | 15 分鐘 |
-| `prototyper` | 你在原型票上說「畫」之後才動:做出手機點得開的原型頁與截圖 | 30 分鐘 |
-
-各 loop 讀寫哪些 label、誰是唯一 writer,見下方 [Label 權威清單](#label-權威清單)。
-
-## 前置需求
-
-- Claude Code 2.1.275 以上
-- [mattpocock-skills](https://github.com/mattpocock/skills) plugin(安裝本 plugin 時會一起裝)
-- `gh` CLI ≥ 2.94,token 有 `project` scope:`gh auth refresh -h github.com -s project`
-- 一個 GitHub organization:一個 planning repo + 一或多個 code repo + 一個 org Project 看板(Free 方案可用)
-- 一顆 classic PAT(`repo` + `project` scope),給 workflow 寫看板與跨 repo 升級票用
+- Claude Code 2.1.275 或更新版本。
+- `gh` CLI 2.94 或更新版本。token 要有 `project` scope。
+- 一個 GitHub organization,內有一個 planning repo、一個或多個 code repo、一個 Project 看板。
+- 一個 classic personal access token,scope 為 `repo` 與 `project`。
+- 每個 code repo 要有一個能在本機執行的 CI 指令。
 
 ## 安裝
 
-在 Claude Code 裡:
+1. 在 Claude Code 中,加入 marketplace:
 
-```
-/plugin marketplace add taisianghuang/wayfinder-loops
-/plugin install wayfinder-loops@wayfinder-loops
-```
-
-安裝時會問兩個值:**planning repo**(`owner/name`)與**工作區資料夾**(code repo 的本機 clone 都放在這底下)。之後可用 `/plugin` → wayfinder-loops → Configure 修改。
-
-## 初次設定
-
-> 第二階段會提供 `/wayfinder-loops:setup` 精靈自動完成以下步驟;在那之前請手動做。
-
-1. **clone code repo** 到工作區資料夾底下。
-2. **建 label**(三類 repo 都要;冪等,可重跑):
-   ```bash
-   bash "$(claude plugin list --json | python3 -c "import sys,json;print(next(p['installPath'] for p in json.load(sys.stdin) if p['id']=='wayfinder-loops@wayfinder-loops'))")/scripts/setup-labels.sh" my-org/planning my-org/api my-org/web
+   ```text
+   /plugin marketplace add taisianghuang/wayfinder-loops
    ```
-3. **建 org Project 看板**:New project → Board,Status 欄位改成這 13 個值(**逐字一致**,含 emoji 與空格,workflow 用字串比對):
-   `⏳ 等你決定`,`🔍 準備選項中`,`💬 討論中`,`💡 收件匣`,`🗺️ 規劃中`,`🤖 查證中`,`✅ 已決定,待收斂`,`📋 排隊中`,`🚀 可實作`,`⚡ 實作中`,`👀 待你 review`,`🚫 卡住`,`✔️ 已關閉`。
-   再加上 Sub-issues progress、Assignees、Repository 欄位;Workflows → Auto-add to project 指向 planning repo。
-4. **設 secrets / vars**(每個 repo 都要):secret `PROJECT_TOKEN`、`ORG_AUTOMATION_TOKEN`(都可用同一顆 PAT);variable `PROJECT_URL`(看板網址)、`PLANNING_REPO`(`owner/name`)。
-5. **部署 workflows**:把 plugin 的 `workflows/` 三個檔案放進每個 repo 的 `.github/workflows/`。
-6. **寫設定檔**:把 [`templates/wayfinder.yml`](templates/wayfinder.yml) 複製到 planning repo 根目錄,填入你的 code repo 與 CI 指令。欄位說明見 [`references/config.md`](references/config.md)。
-7. **健檢**:`/wayfinder-loops:doctor`,全部 ✅ 再往下。
-8. **冒煙測試**:在 planning repo 開一張寫著模糊想法的 issue,手動跑一次 `/wayfinder-loops:cartographer`,看板上應該出現在「⏳ 等你決定」。
+
+2. 安裝 plugin:
+
+   ```text
+   /plugin install wayfinder-loops@wayfinder-loops
+   ```
+
+   此步驟也會安裝 mattpocock-skills。
+
+3. 輸入 `planning_repo`。格式為 `owner/name`。
+4. 輸入 `workspace_dir`。這是放 code repo clone 的資料夾。
+
+注意:要修改這兩個值,執行 `/plugin`,選 wayfinder-loops,選 Configure。
+
+## 設定
+
+注意:第二階段會提供 `/wayfinder-loops:setup`,自動執行步驟 2 到 7。
+
+1. 把每個 code repo clone 到 `workspace_dir`。
+2. 把 [`templates/wayfinder.yml`](templates/wayfinder.yml) 複製到 planning repo 的根目錄。
+3. 在 `wayfinder.yml` 中,填寫每個 code repo 的 `repo`、`dir` 與 `ci`。欄位說明在 [`references/config.md`](references/config.md)。
+4. 建立 label。在 plugin 的安裝資料夾執行 `scripts/setup-labels.sh`,參數為 planning repo 與每個 code repo:
+
+   ```bash
+   bash scripts/setup-labels.sh my-org/planning my-org/api my-org/web
+   ```
+
+   注意:執行 `claude plugin list --json`,`installPath` 欄位是 plugin 的安裝資料夾。
+
+5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單在報告書第 03 章。
+
+   警告:Status 值必須與清單完全相同,包含 emoji 與空格。不同時,看板不會更新。
+
+6. 在 planning repo 與每個 code repo,設定以下項目:
+
+   | 名稱 | 種類 | 值 |
+   | --- | --- | --- |
+   | `PROJECT_URL` | variable | 看板網址 |
+   | `PLANNING_REPO` | variable | planning repo,格式為 `owner/name` |
+   | `PROJECT_TOKEN` | secret | personal access token |
+   | `ORG_AUTOMATION_TOKEN` | secret | personal access token |
+
+7. 把 [`workflows/`](workflows/) 中的三個檔案複製到每個 repo 的 `.github/workflows/`。
+8. 執行健檢:
+
+   ```text
+   /wayfinder-loops:doctor
+   ```
+
+9. 確認所有項目是 ✅。有 ❌ 時,依 doctor 的說明修正,再執行步驟 8。
 
 ## 啟動
 
-每條 loop 開一個終端機,在工作區資料夾啟動 Claude Code:
+警告:每條 loop 只能有一個執行中的 session。兩個相同的 loop 會實作同一張 implementation ticket 兩次。
 
-```
-/loop 10m /wayfinder-loops:resolver
-/loop 20m /wayfinder-loops:cartographer
-/loop 15m /wayfinder-loops:researcher
-/loop 15m /wayfinder-loops:implementer
-/loop 30m /wayfinder-loops:prototyper
-```
+1. 開五個終端機。
+2. 在每個終端機,進入 `workspace_dir`,啟動 Claude Code。
+3. 在每個終端機,執行一行指令:
 
-不想讓 context 隨輪數累積,可以改用 headless 模式:`bin/wayfinder-run-loop resolver 600`(每輪開全新的 session;implementer 與 prototyper 需要寬權限,建議仍用互動式)。
+   ```text
+   /loop 10m /wayfinder-loops:resolver
+   /loop 20m /wayfinder-loops:cartographer
+   /loop 15m /wayfinder-loops:researcher
+   /loop 15m /wayfinder-loops:implementer
+   /loop 30m /wayfinder-loops:prototyper
+   ```
 
-**同一條 loop 只能開一個。** 平行度由 loop 內部派 subagent 取得;開兩個同名 loop 會搶同一張票。
+注意:`/loop` 排程在 7 天後到期。到期後,重新執行步驟 3。
 
 ## 日常操作
 
-人類每天只有三個動作:看「⏳ 等你決定」欄、在決策票上點一個 `decision:*` label、審「👀 待你 review」的 spec→main PR。詳見 [LOOP.md](LOOP.md)。
+### 加入一個想法
 
-## 成本與資源
+1. 在 planning repo 建立一個 issue。
+2. 寫下想法。不要加 label。
 
-- 五條 loop 長時間開著會持續消耗 token;Implementer 一輪最多派 `limits.per_round` 張票(預設 3),每張都會跑一次完整的本地 CI,外加一次 reviewer 的 CI。
-- `/loop` 的排程任務 7 天後到期,session 必須一直開著。
-- 一輪的成本大多在 subagent;loop 本身只掃描、認領、派工、驗收,context 不會隨輪數膨脹太多。
+### 做決定
 
-## 安全
+1. 開啟看板。
+2. 開啟「⏳ 等你決定」欄中的卡片。
+3. 讀 decision ticket 中的選項表與建議。
+4. 加一個 label:
 
-- loop 以**你的 GitHub 身分**開票、留言、開 PR、合併批次 PR 進整合分支。**合併進 main 只由人類做。**
-- loop 不改 `.github/workflows/`、不代貼人工核准類的 label。
-- PAT 只需要 `repo` + `project`;放在 repo secret,不寫進設定檔。
+   | Label | 意思 |
+   | --- | --- |
+   | `decision:a`、`decision:b`、`decision:c` | 選擇該選項 |
+   | `decision:approve` | 選擇建議的選項 |
+   | `decision:discuss` | 要求說明。resolver 會回覆。 |
 
-## 更新與移除
+注意:也可以用留言回覆。留言要指出一個選項。
 
-```
-/plugin marketplace update wayfinder-loops
-/plugin update wayfinder-loops@wayfinder-loops
-/reload-plugins
-```
+### 審查 integration PR
 
-移除:`/plugin uninstall wayfinder-loops@wayfinder-loops`。GitHub 上的 label、看板、workflow 不會被移除。
+1. 開啟看板。
+2. 開啟「👀 待你 review」欄中的 integration PR。
+3. 讀 PR 說明最上方的「審這裡」清單。
+4. 審查清單中的每個 one-way door。
+5. 確認 implementer 的報告寫著「落後 0、閘門綠」。
+6. 合併 PR。
 
-## 疑難排解
+警告:只有人可以合併 integration PR。不要讓 agent 合併 integration PR。
 
-先跑 `/wayfinder-loops:doctor`。常見問題:
+## 更新
 
-- **看板卡片不動**:Status 選項名稱與上面 13 個值不完全一致,或 repo 沒設 `PROJECT_URL` / `PROJECT_TOKEN`。
-- **看板上的卡片 loop 看不到**:看板上直接新增的 draft 要按 **Convert to issue** 轉到 planning repo。
-- **`gh` 指令失敗**:版本低於 2.94,或 token 缺 `project` scope。
-- **票一直停在「📋 排隊中」**:blocker 關掉時沒觸發升級;到 planning repo 的 Actions 手動執行 `promote-queued`。
+1. 執行:
 
-## Label 權威清單
+   ```text
+   /plugin marketplace update wayfinder-loops
+   /plugin update wayfinder-loops@wayfinder-loops
+   /reload-plugins
+   ```
 
-**mattpocock-skills 自己會讀寫的(10 個)**
+## 移除
 
-| Label | writer |
-|---|---|
-| `needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix` | triage、to-spec、to-tickets |
-| `wayfinder:map` | wayfinder |
-| `wayfinder:research` / `wayfinder:prototype` / `wayfinder:grilling` / `wayfinder:task` | wayfinder |
+1. 執行:
 
-**本 plugin 新增的**
+   ```text
+   /plugin uninstall wayfinder-loops@wayfinder-loops
+   ```
 
-| Label | writer | 用途 |
-|---|---|---|
-| `wayfinder:ticket` | cartographer | 一次撈出所有決策票 |
-| `agent:queued` / `agent:implement` / `agent:in-progress` / `agent:blocked` | 升級 workflow / loop | 實作管線的位置;`agent:blocked` 是錯誤旗標 |
-| `decision:a` / `b` / `c` / `approve` / `discuss` | 只有人 | 人類的決定 |
+注意:此操作不會移除 GitHub 上的 label、看板與 workflow。
 
-## 不變式
+## 故障排除
 
-- 任何 loop、任何 workflow 都不讀 Project Status 做判斷;判斷一律讀 label。
-- 每個 label 只有一個 writer。
-- map body 只有 Cartographer 寫。
-- 決策票沒有人類新動作 → 所有 loop 對它 no-op;永不逾時自動核准。
-- 實作票的 PR base 永遠是 `spec/*` 整合分支;人類只合併 spec→main 的 PR。
-- 批次 PR 的驗證在本地(設定檔的 CI 指令 + 獨立 reviewer),不靠 GitHub Actions。
+先執行 `/wayfinder-loops:doctor`。
 
-## 文件
+| 症狀 | 原因 | 處理 |
+| --- | --- | --- |
+| 看板卡片不移動 | Status 值與清單不同,或缺少 `PROJECT_URL`、`PROJECT_TOKEN` | 比對 Status 值。檢查 variable 與 secret。 |
+| loop 看不到看板上的卡片 | 卡片是 draft,不是 issue | 在卡片上選 Convert to issue,選 planning repo。 |
+| implementation ticket 停在「📋 排隊中」 | 升級事件沒有觸發 | 在該 repo 的 Actions 頁,手動執行 `promote-queued`。 |
+| `promote-queued` 失敗 | 缺少 `PLANNING_REPO` variable | 設定 `PLANNING_REPO`。 |
+| implementation ticket 有 `agent:blocked` | 實作或審查失敗 | 讀 implementation ticket 上 `🤖 [implementer]` 或 `🤖 [reviewer]` 的留言。修正後移除 `agent:blocked`。 |
+| 同一張 implementation ticket 被實作兩次 | 同一條 loop 有兩個 session | 關閉一個 session。 |
 
-- [LOOP.md](LOOP.md):人類日常操作
-- [references/config.md](references/config.md):設定參考
-- [references/contract.md](references/contract.md):五條 loop 共用的契約
-- [docs/design-public-kit.md](docs/design-public-kit.md):公開版的設計
-- [docs/design-notes.md](docs/design-notes.md):早期的設計修正紀錄
+## 參考
+
+| 文件 | 內容 |
+| --- | --- |
+| [報告書](https://taisianghuang.github.io/wayfinder-loops-guide/) | 專案介紹、角色、看板管理、建立工作流 |
+| [LOOP.md](LOOP.md) | 人的日常操作 |
+| [references/config.md](references/config.md) | 設定欄位 |
+| [references/contract.md](references/contract.md) | 所有 loop 共用的規則 |
+| [docs/design-public-kit.md](docs/design-public-kit.md) | plugin 的設計 |
+| [docs/design-notes.md](docs/design-notes.md) | 早期的設計修正紀錄 |
 
 ## 致謝
 
-- [Matt Pocock](https://github.com/mattpocock/skills) 的 wayfinder 與工程類 skills 是這套流程的地基。
-- 獨立 reviewer 與 Merge Danger 的設計來自 Matt Pocock 的演講〈Fixing the PR Bottleneck〉(AI Engineer Paris 2026)。
+- [mattpocock/skills](https://github.com/mattpocock/skills) 提供 wayfinder、to-spec、to-tickets、implement、code-review 等 skill。
+- reviewer 的設計來自 Matt Pocock 的演講〈Fixing the PR Bottleneck〉(AI Engineer Paris 2026)。
 
-## License
+## 授權
 
 [MIT](LICENSE)
