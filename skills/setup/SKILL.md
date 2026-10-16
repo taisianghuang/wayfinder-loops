@@ -1,6 +1,6 @@
 ---
 name: setup
-description: wayfinder-loops 互動安裝精靈 — 檢查前置條件,建 planning repo、wayfinder.yml、label、org Project 看板(13 個 Status 選項)、repo variable,並以 PR 送出 workflow;secret 列出指令讓人自己設。每一步先檢查、已完成就跳過,可以重跑。只在使用者明確呼叫 /wayfinder-loops:setup 時執行。
+description: wayfinder-loops 互動安裝精靈 — 檢查前置條件,建 planning repo、wayfinder.yml、label、org Project 看板(13 個 Status 選項、Board 檢視)、repo variable,並以 PR 送出 workflow;secret 列出指令讓人自己設。每一步先檢查、已完成就跳過,可以重跑。只在使用者明確呼叫 /wayfinder-loops:setup 時執行。
 ---
 
 你是 wayfinder-loops 的安裝精靈。你把 README「手動設定」一節的步驟自動化。
@@ -176,7 +176,23 @@ description: wayfinder-loops 互動安裝精靈 — 檢查前置條件,建 plann
    ```
 
    `<ALL_REPOS>` 中沒有連上的 repo,加入計畫:`gh project link <N> --owner <ORG> --repo <repo>`。
-6. `wayfinder.yml` 的 `project_url` 與看板網址不同或沒有時,在 `$SETUP_TMP/wayfinder.yml` 填入看板網址,並記下「wayfinder.yml 要送 PR」。新看板的網址要等建立後才知道;計畫中寫「建立後填入」。
+6. 檢查檢視(view)。新看板的預設檢視是 Table。wayfinder-loops 要用以 Status 分欄的 Board 檢視:
+
+   ```bash
+   gh api graphql \
+     -f query='query($org:String!,$num:Int!){organization(login:$org){projectV2(number:$num){id views(first:50){nodes{id number name layout verticalGroupByFields(first:5){nodes{... on ProjectV2FieldCommon{name}}}}}}}}' \
+     -f org=<ORG> -F num=<N> --jq '.data.organization.projectV2'
+   ```
+
+   記下 project 的 `id`(下文 `<PROJECT_ID>`)與第一個檢視的 `id`(`number` 最小的,下文 `<VIEW_ID>`)。依結果處理:
+
+   | 結果 | 計畫中的動作 |
+   | --- | --- |
+   | 有 `layout` 是 `BOARD_LAYOUT` 且分欄是 `Status` 的檢視 | 無 |
+   | 看板由精靈在本次新建 | 加入計畫:把第一個檢視改成 Board,名稱 `Board` |
+   | 既有看板,沒有符合的檢視 | 問使用者:新增一個 Board 檢視(建議,不動既有檢視)、把第一個檢視改成 Board、或不要。依答案加入計畫 |
+
+7. `wayfinder.yml` 的 `project_url` 與看板網址不同或沒有時,在 `$SETUP_TMP/wayfinder.yml` 填入看板網址,並記下「wayfinder.yml 要送 PR」。新看板的網址要等建立後才知道;計畫中寫「建立後填入」。
 
 ### 步驟 6:variable
 
@@ -304,7 +320,26 @@ bash <PLUGIN>/scripts/setup-labels.sh <PLANNING> <CODE_REPOS...>
    gh project link <N> --owner <ORG> --repo <repo>
    ```
 
-5. 驗證:重做盤點步驟 5 第 5 點,`<ALL_REPOS>` 都在清單中。印 `✅ 步驟 5 看板 <url>`。
+5. 驗證:重做盤點步驟 5 第 5 點,`<ALL_REPOS>` 都在清單中。
+6. Board 檢視。新看板的 `<VIEW_ID>` 在建立後依盤點步驟 5 第 6 點讀取。
+   - 把第一個檢視改成 Board:
+
+     ```bash
+     gh api graphql \
+       -f query='mutation($v:ID!){updateProjectV2View(input:{viewId:$v,layout:BOARD_LAYOUT,name:"Board"}){projectV2View{layout verticalGroupByFields(first:5){nodes{... on ProjectV2FieldCommon{name}}}}}}' \
+       -f v=<VIEW_ID>
+     ```
+
+   - 新增一個 Board 檢視:
+
+     ```bash
+     gh api graphql \
+       -f query='mutation($p:ID!){createProjectV2View(input:{projectId:$p,name:"Board",layout:BOARD_LAYOUT}){projectV2View{layout verticalGroupByFields(first:5){nodes{... on ProjectV2FieldCommon{name}}}}}}' \
+       -f p=<PROJECT_ID>
+     ```
+
+7. 驗證:回傳的 `layout` 是 `BOARD_LAYOUT`,分欄欄位是 `Status`。分欄不是 `Status` 時印 ❌:API 不能指定分欄欄位。請使用者在看板網頁開啟該檢視 → 選 View 選單 → Column by → 選 Status。
+8. 印 `✅ 步驟 5 看板 <url>`。
 
 ### 3b + 8. planning repo 的 PR(wayfinder.yml 與 workflow)
 
