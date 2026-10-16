@@ -30,15 +30,12 @@ GitHub label 是唯一的狀態來源。loop 不保存狀態。看板欄位由 w
 
 ### 流程
 
-```mermaid
-flowchart LR
-  idea["想法"] --> map["map 與 decision ticket"]
-  map -->|"人選擇選項"| spec["spec 與 implementation ticket"]
-  spec --> pr["batch PR"]
-  pr -->|"reviewer 審查"| branch["integration branch"]
-  branch --> final["integration PR"]
-  final -->|"人審查並合併"| main["main"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/pipeline-dark.png">
+  <img alt="wayfinder-loops 操作管線:想法經過 map、decision ticket、spec、implementation ticket、batch PR、reviewer,到 integration PR" src="docs/images/pipeline-light.png">
+</picture>
+
+可以互動的版本在[報告書 00 總覽](https://taisianghuang.github.io/wayfinder-loops-guide/)。
 
 ## 名詞
 
