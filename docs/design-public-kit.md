@@ -21,9 +21,9 @@
 
 | 寫死的內容 | 出現位置 | 新的去處 |
 |---|---|---|
-| `TaihemaoOrg/planning` | 五條 loop、`sync-project-status.yml` | 機器設定 `planning_repo` |
-| `TaihemaoOrg/linebot-saas-backend` / `frontend` | 五條 loop、`setup-labels.sh` | `wayfinder.yml` 的 `code_repos` |
-| `~/wayfinder-lab/` 本機 clone 位置 | implementer、prototyper、cartographer | 機器設定 `workspace_dir` + `code_repos[].dir` |
+| `my-org/planning` | 五條 loop、`sync-project-status.yml` | 機器設定 `planning_repo` |
+| `my-org/api` / `my-org/web` | 五條 loop、`setup-labels.sh` | `wayfinder.yml` 的 `code_repos` |
+| `~/wayfinder-workspace/` 本機 clone 位置 | implementer、prototyper、cartographer | 機器設定 `workspace_dir` + `code_repos[].dir` |
 | `uv run nox -s ci`、`pnpm check`、`nox -s integration` | implementer(4 處) | `code_repos[].ci` / `ci_optional` |
 | frontend 產生檔衝突改跑 `pnpm codegen` | implementer(2 處) | `code_repos[].generated` |
 | 原型慣例(`apps/<app>/src/features/.../prototype/`、`pnpm boundaries`、390×844 截圖、wt-35 前例) | prototyper | planning repo 內的原型指南,由 `wayfinder.yml` 的 `code_repos[].prototype_guide` 指過去(選用);kit 只留通用流程。放 planning repo 是為了不必改動 code repo |
@@ -58,7 +58,7 @@ wayfinder-loops/
 │   └── wayfinder-run-loop   ← 原 scripts/run-loop.sh(模式 B)
 ├── scripts/                 ← build_gallery.py、inline_single_file.py、setup-labels.sh
 ├── README.md                ← 安裝 + 三步驟
-└── LOOP.md                  ← 人類日常操作(內容不變,去掉 Taihemao 字樣)
+└── LOOP.md                  ← 人類日常操作(內容不變,去掉專案名稱)
 ```
 
 選 skill 而不是 command:官方把 `commands/` 標為舊格式,skill 可以帶自己的支援檔。五條 loop **不設** `disable-model-invocation`,否則 `/loop` 觸發時會被當成純文字;改在 description 寫明「只在被明確呼叫時執行」。
@@ -83,8 +83,8 @@ wayfinder-loops/
 
 **機器層(plugin userConfig)**:每台電腦不同的東西,只有兩個值。
 
-- `planning_repo`:例如 `TaihemaoOrg/planning`
-- `workspace_dir`:例如 `~/wayfinder-lab`
+- `planning_repo`:例如 `my-org/planning`
+- `workspace_dir`:例如 `~/wayfinder-workspace`
 
 skill 內文用 `${user_config.planning_repo}` 取得。
 
@@ -92,17 +92,17 @@ skill 內文用 `${user_config.planning_repo}` 取得。
 
 ```yaml
 version: 1
-project_url: https://github.com/orgs/TaihemaoOrg/projects/2
+project_url: https://github.com/orgs/my-org/projects/1
 
 code_repos:
-  - repo: TaihemaoOrg/linebot-saas-backend
-    dir: linebot-saas-backend            # 在 workspace_dir 底下
+  - repo: my-org/api
+    dir: api                             # 在 workspace_dir 底下
     ci: uv run nox -s ci                 # 本地 CI 對應指令,batch PR 與 harvest 都跑這個
     ci_optional:                         # 條件成立才跑
       - when: docker                     # docker info 成功
         run: uv run nox -s integration
-  - repo: TaihemaoOrg/linebot-saas-frontend
-    dir: linebot-saas-frontend
+  - repo: my-org/web
+    dir: web
     ci: pnpm check
     generated:                           # 衝突時不手解:取 main 的版本再重新產生
       - paths: [packages/api-client/openapi.json, packages/api-client/src/generated/]
@@ -146,7 +146,7 @@ kit 預設的 one-way door 清單:資料庫 migration、資料刪除或不可逆
 遷移期間現在的 loop 照常跑,切換只花幾分鐘、隨時可以退回。
 
 1. 在分支上做完 plugin;本機用 `/plugin marketplace add ~/wayfinder-loops` 裝本地版。
-2. 在 `TaihemaoOrg/planning` 加上 `wayfinder.yml`(內容就是上面的範例)。
+2. 在 `my-org/planning` 加上 `wayfinder.yml`(內容就是上面的範例)。
 3. 停掉五條 loop → 移除 `~/.claude/commands/` 的五個 symlink → 用 `/wayfinder-loops:<名稱>` 重開 loop。
 4. 觀察一兩輪。有問題就裝回 symlink、用舊名稱重開。
 5. memory 裡提到 `/implementer` 等舊名稱的條目,切換後更新。
@@ -177,4 +177,4 @@ kit 預設的 one-way door 清單:資料庫 migration、資料刪除或不可逆
 
 1. **plugin 名稱**:決定指令前綴。`wayfinder-loops` → `/wayfinder-loops:implementer`(清楚但長);`wf` → `/wf:implementer`(短但不直觀)。建議 `wayfinder-loops`。
 2. **授權**:公開時用什麼 license。建議 MIT,跟 mattpocock-skills 一致。
-3. **測試 org**:第二階段要在一個乾淨的 GitHub org 從零驗證 setup。用你個人帳號底下新開的 org,還是先用 TaihemaoOrg 重跑 setup(冪等)驗證?
+3. **測試 org**:第二階段要在一個乾淨的 GitHub org 從零驗證 setup。用你個人帳號底下新開的 org,還是先用既有 org 重跑 setup(冪等)驗證?
