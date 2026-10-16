@@ -1,11 +1,11 @@
-# 決策封包 template
+# decision packet template
 
-非同步化之後每次來回成本是幾小時,所以每則封包必須能自足決策。
+非同步化之後每次來回成本是幾小時,所以每則 decision packet 必須能自足決策。
 用決策樹取代單一問題,把 5 個 round trip 壓成 1–2 個。
 
 選項數紀律:超過 3 個選項先找正交的軸拆成兩層決策;真的攤平的同儕選項
 (vendor 挑選這類)照列 A–E,但「怎麼回覆」改成「留言回選項字母」——label
-只開到 c;超過 5 個候選先開 `wayfinder:research` 收斂 shortlist 再開票。
+只開到 c;超過 5 個候選先開 `wayfinder:research` 收斂 shortlist 再開 ticket。
 
 ---
 

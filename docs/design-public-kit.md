@@ -28,10 +28,10 @@
 | frontend 產生檔衝突改跑 `pnpm codegen` | implementer(2 處) | `code_repos[].generated` |
 | 原型慣例(`apps/<app>/src/features/.../prototype/`、`pnpm boundaries`、390×844 截圖、wt-35 前例) | prototyper | planning repo 內的原型指南,由 `wayfinder.yml` 的 `code_repos[].prototype_guide` 指過去(選用);kit 只留通用流程。放 planning repo 是為了不必改動 code repo |
 | backend 的 `arch-reviewer.md`、Delivery Rules 當過渡審查標準 | implementer 步驟 3b | 拿掉;reviewer 只讀 repo 的 `CODING_STANDARDS.md`(選用) |
-| 單向門清單(migration、LINE 推播、ERP 寫回…) | implementer 步驟 3b | kit 給通用預設,`wayfinder.yml` 的 `one_way_doors` 可以覆寫或追加 |
+| one-way door 清單(migration、LINE 推播、ERP 寫回…) | implementer 步驟 3b | kit 給通用預設,`wayfinder.yml` 的 `one_way_doors` 可以覆寫或追加 |
 | `~/wayfinder-loops/templates/...`、`~/wayfinder-loops/scripts/...` 絕對路徑 | cartographer、prototyper | `${CLAUDE_PLUGIN_ROOT}/...` |
 | `~/.claude/plugins/cache/mattpocock/...` 的 fallback 路徑 | implementer | 刪掉,改宣告 plugin 相依 |
-| 「實測 backend#512」這類專案歷史 | 散落各處 | 保留「為什麼」,拿掉票號 |
+| 「實測 backend#512」這類專案歷史 | 散落各處 | 保留「為什麼」,拿掉 ticket 編號 |
 
 ## Plugin 結構
 
@@ -97,7 +97,7 @@ project_url: https://github.com/orgs/TaihemaoOrg/projects/2
 code_repos:
   - repo: TaihemaoOrg/linebot-saas-backend
     dir: linebot-saas-backend            # 在 workspace_dir 底下
-    ci: uv run nox -s ci                 # 本地 CI 對應指令,批次 PR 與收割都跑這個
+    ci: uv run nox -s ci                 # 本地 CI 對應指令,batch PR 與 harvest 都跑這個
     ci_optional:                         # 條件成立才跑
       - when: docker                     # docker info 成功
         run: uv run nox -s integration
@@ -120,7 +120,7 @@ models:
   reviewer: opus
 ```
 
-kit 預設的單向門清單:資料庫 migration、資料刪除或不可逆改寫、權限與認證、對外發送(email / webhook / 推播)、金流、公開 API 契約。
+kit 預設的 one-way door 清單:資料庫 migration、資料刪除或不可逆改寫、權限與認證、對外發送(email / webhook / 推播)、金流、公開 API 契約。
 
 **repo 層(各 code repo 自己的檔案,全部選用)**:
 

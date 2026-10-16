@@ -32,8 +32,8 @@ LABELS=(
   "wayfinder:task|FBCA04|Wayfinder ticket type: task"
 
   # ── 本地擴充(不在 mattpocock-skills 規格內)────────────────────────
-  # wayfinder:ticket 是我們自己加的「所有決策票」聚合 label。
-  # skill 不讀它;純粹讓一次查詢就撈出所有決策票,不必分四種類型查。
+  # wayfinder:ticket 是我們自己加的「所有 decision ticket」聚合 label。
+  # skill 不讀它;純粹讓一次查詢就撈出所有 decision ticket,不必分四種類型查。
   # 顏色改用 0969DA,避免與 ready-for-human 的 1D76DB 撞色。
   "wayfinder:ticket|0969DA|[local] Any wayfinder decision ticket (child of a map)"
 
