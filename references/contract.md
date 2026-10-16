@@ -12,7 +12,7 @@ gh api -H "Accept: application/vnd.github.raw" repos/<PLANNING>/contents/wayfind
 
 以下用到的名詞:
 
-- **CODE repo** = 設定檔 `code_repos[].repo` 列出的 repo。實作票與 PR 只在這些 repo。
+- **CODE repo** = 設定檔 `code_repos[].repo` 列出的 repo。implementation ticket 與 PR 只在這些 repo。
 - **本機 clone** = `<WORKSPACE>/<code_repos[].dir>`。**只准在 WORKSPACE 底下工作**,不碰工作區以外的同名 repo(那是人類的日常工作區)。
 - **CI 指令** = `code_repos[].ci`;`ci_optional[]` 的 `when` 條件成立才加跑(`docker` = `docker info` 成功)。
 
@@ -22,9 +22,9 @@ gh api -H "Accept: application/vnd.github.raw" repos/<PLANNING>/contents/wayfind
 - `decision:*` label 依契約只有人會貼。
 - 對外文字(issue、comment、PR body)用繁體中文(台灣用語);commit message 依該 CODE repo 自己的規範(沒有規範時用英文)。
 
-## 認領與欄位
+## claim 與欄位
 
-- 認領鎖是 `agent:in-progress` label,**不是 self-assign**。mattpocock 的 skill 或 wayfinder 流程叫你 assign yourself 時,一律改貼 label。
+- claim lock 是 `agent:in-progress` label,**不是 self-assign**。mattpocock 的 skill 或 wayfinder 流程叫你 assign yourself 時,一律改貼 label。
 - assignee 欄位保留給「輪到人類」。
 - **map body 只有 Cartographer 寫**。其他 loop 要告訴 map 的事,用自己前綴的 comment 貼在 map issue 上。
 - 任何 loop、任何 workflow 都**不讀 Project Status 做判斷**;判斷一律讀 label。Status 由 `sync-project-status` workflow 鏡射。
@@ -44,10 +44,10 @@ MP=$(claude plugin list --json | python3 -c "import sys,json; print(next(p['inst
 
 ## 派工的通則
 
-- 會留下大量讀檔/查證殘渣的工作(實作、查證、開票、原型)一律交給 subagent;loop 本身只做掃描、認領、派工、驗收、回報,讓 loop session 的 context 不隨輪數膨脹。
+- 會留下大量讀檔/查證殘渣的工作(實作、查證、開 ticket、原型)一律交給 subagent;loop 本身只做掃描、claim、派工、驗收、回報,讓 loop session 的 context 不隨輪數膨脹。
 - subagent 的 prompt 必須自帶完整契約(它看不到這份文件):把用到的規則、設定值、路徑都寫進去。例外是 `wayfinder-loops:reviewer` agent,它的契約寫在 `agents/reviewer.md`,派工時只需傳入該張 PR 的資料。
 - 模型上限以設定檔 `models` 為準;沒寫時預設 `sonnet`,上限 `opus`。
 
 ## 平行度
 
-**絕對不要同時開兩條同名 loop。** label 鎖沒有身分資訊,兩個 session 搶同一張票時都會以為是自己貼的。平行度一律靠「同一條 loop 內依序認領、平行派工」取得。
+**絕對不要同時開兩條同名 loop。** label 鎖沒有身分資訊,兩個 session 搶同一張 ticket 時都會以為是自己貼的。平行度一律靠「同一條 loop 內依序 claim、平行派工」取得。
