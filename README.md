@@ -123,7 +123,7 @@ flowchart LR
 
    注意:執行 `claude plugin list --json`,`installPath` 欄位是 plugin 的安裝資料夾。
 
-5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單與順序在 [`scripts/board-status.py`](scripts/board-status.py) 的 `STATUS_OPTIONS`。
+5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單與順序在 [`scripts/board-status.py`](scripts/board-status.py) 的 `STATUS_OPTIONS`。把檢視從 Table 改成 Board,Column by 選 Status。
 
    警告:Status 值必須與清單完全相同,包含 emoji 與空格。不同時,看板不會更新。
 
