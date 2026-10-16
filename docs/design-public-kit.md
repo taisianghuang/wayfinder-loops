@@ -22,7 +22,7 @@
 | 寫死的內容 | 出現位置 | 新的去處 |
 |---|---|---|
 | `my-org/planning` | 五條 loop、`sync-project-status.yml` | 機器設定 `planning_repo` |
-| `my-org/api` / `frontend` | 五條 loop、`setup-labels.sh` | `wayfinder.yml` 的 `code_repos` |
+| `my-org/api` / `my-org/web` | 五條 loop、`setup-labels.sh` | `wayfinder.yml` 的 `code_repos` |
 | `~/wayfinder-workspace/` 本機 clone 位置 | implementer、prototyper、cartographer | 機器設定 `workspace_dir` + `code_repos[].dir` |
 | `uv run nox -s ci`、`pnpm check`、`nox -s integration` | implementer(4 處) | `code_repos[].ci` / `ci_optional` |
 | frontend 產生檔衝突改跑 `pnpm codegen` | implementer(2 處) | `code_repos[].generated` |
@@ -58,7 +58,7 @@ wayfinder-loops/
 │   └── wayfinder-run-loop   ← 原 scripts/run-loop.sh(模式 B)
 ├── scripts/                 ← build_gallery.py、inline_single_file.py、setup-labels.sh
 ├── README.md                ← 安裝 + 三步驟
-└── LOOP.md                  ← 人類日常操作(內容不變,去掉 my-org 字樣)
+└── LOOP.md                  ← 人類日常操作(內容不變,去掉專案名稱)
 ```
 
 選 skill 而不是 command:官方把 `commands/` 標為舊格式,skill 可以帶自己的支援檔。五條 loop **不設** `disable-model-invocation`,否則 `/loop` 觸發時會被當成純文字;改在 description 寫明「只在被明確呼叫時執行」。
