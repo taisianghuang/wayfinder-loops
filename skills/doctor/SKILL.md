@@ -16,10 +16,10 @@ description: wayfinder-loops 健檢 — 印出目前生效的設定(planning rep
 ## 檢查
 
 1. `gh --version` ≥ 2.94;`gh auth status` 的 token scope 含 `project`。
-2. 讀設定檔:`gh api -H "Accept: application/vnd.github.raw" repos/<planning repo>/contents/wayfinder.yml`。讀不到 → 回報缺 wayfinder.yml,請照 README「初次設定」第 6 步建立。
+2. 讀設定檔:`gh api -H "Accept: application/vnd.github.raw" repos/<planning repo>/contents/wayfinder.yml`。讀不到 → 回報缺 wayfinder.yml,請執行 `/wayfinder-loops:setup`。
 3. 對 wayfinder.yml 的每個 `code_repos[]`:`<工作區>/<dir>` 存在且是 git repo、`git -C <path> remote get-url origin` 指向該 repo。
 4. 確認 mattpocock-skills 已安裝:`claude plugin list --json` 有 `mattpocock-skills@` 開頭的項目,且它的 `installPath` 底下有 `skills/engineering/implement/SKILL.md`(這個 skill 設了 disable-model-invocation,不會出現在 skill 清單,要看檔案)。
-5. 對 wayfinder.yml 的每個 repo 與 planning repo:`gh variable list --repo <repo>` 有 `PROJECT_URL` 與 `PLANNING_REPO`,`gh secret list --repo <repo>` 有 `PROJECT_TOKEN`。
+5. 對 wayfinder.yml 的每個 repo 與 planning repo:`gh variable list --repo <repo>` 有 `PROJECT_URL` 與 `PLANNING_REPO`,`gh secret list --repo <repo>` 有 `PROJECT_TOKEN` 與 `ORG_AUTOMATION_TOKEN`。
 
 ## 回報
 

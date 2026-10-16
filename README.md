@@ -59,7 +59,7 @@ flowchart LR
 ## 需求
 
 - Claude Code 2.1.275 或更新版本。
-- `gh` CLI 2.94 或更新版本。token 要有 `project` scope。
+- `gh` CLI 2.94 或更新版本。token 要有 `repo`、`project` 與 `workflow` scope。
 - 一個 GitHub organization,內有一個 planning repo、一個或多個 code repo、一個 Project 看板。
 - 一個 classic personal access token,scope 為 `repo` 與 `project`。
 - 每個 code repo 要有一個能在本機執行的 CI 指令。
@@ -87,7 +87,30 @@ flowchart LR
 
 ## 設定
 
-注意:第二階段會提供 `/wayfinder-loops:setup`,自動執行步驟 2 到 7。
+1. 在 Claude Code 中,執行安裝精靈:
+
+   ```text
+   /wayfinder-loops:setup
+   ```
+
+2. 回答精靈的問題:code repo 清單、每個 code repo 的本機資料夾名與 CI 指令。
+3. 讀精靈列出的寫入動作。同意後,精靈建立 label、看板與 variable,並開 PR 送出 `wayfinder.yml` 與 workflow。
+4. 照精靈的說明,建立 personal access token,在你自己的終端機設定 `PROJECT_TOKEN` 與 `ORG_AUTOMATION_TOKEN` secret。
+
+   警告:不要把 token 貼進 Claude Code 的對話。
+
+5. 合併精靈開的每個 PR。
+6. 執行健檢:
+
+   ```text
+   /wayfinder-loops:doctor
+   ```
+
+7. 確認所有項目是 ✅。有 ❌ 時,依 doctor 的說明修正,或再執行一次 `/wayfinder-loops:setup`。精靈會跳過已完成的步驟。
+
+### 手動設定
+
+不使用精靈時,照以下步驟設定。
 
 1. 把每個 code repo clone 到 `workspace_dir`。
 2. 把 [`templates/wayfinder.yml`](templates/wayfinder.yml) 複製到 planning repo 的根目錄。
@@ -100,7 +123,7 @@ flowchart LR
 
    注意:執行 `claude plugin list --json`,`installPath` 欄位是 plugin 的安裝資料夾。
 
-5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單在報告書第 03 章。
+5. 建立 org Project 看板。把 Status 欄位設為 13 個值。值的清單與順序在 [`scripts/board-status.py`](scripts/board-status.py) 的 `STATUS_OPTIONS`。
 
    警告:Status 值必須與清單完全相同,包含 emoji 與空格。不同時,看板不會更新。
 
