@@ -30,10 +30,7 @@ GitHub label 是唯一的狀態來源。loop 不保存狀態。看板欄位由 w
 
 ### 流程
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/pipeline-dark.png">
-  <img alt="wayfinder-loops 操作管線:想法經過 map、decision ticket、spec、implementation ticket、batch PR、reviewer,到 integration PR" src="docs/images/pipeline-light.png">
-</picture>
+![wayfinder-loops 操作管線:想法經過 map、decision ticket、spec、implementation ticket、batch PR、reviewer,到 integration PR](docs/images/pipeline.png)
 
 可以互動的版本在[報告書 00 總覽](https://taisianghuang.github.io/wayfinder-loops-guide/)。
 
