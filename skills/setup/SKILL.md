@@ -369,17 +369,18 @@ gh variable set PLANNING_REPO --repo <repo> --body "<PLANNING>"
 
 把以下步驟原樣給使用者:
 
-警告:token 只在你自己的終端機輸入。不要貼進 Claude Code 的對話,也不要用 `!` 在對話中執行這些指令。
+警告:token 只在你自己的終端機輸入。不要貼進 Claude Code 的對話。不要用 `!` 在對話中執行這些指令:`!` 不能互動輸入,`read` 會讀到空字串,secret 會被設成空值。
 
 1. 開啟 https://github.com/settings/tokens/new?scopes=repo,project&description=wayfinder-loops 。
 2. 確認 Select scopes 中 `repo` 與 `project` 已勾選。
 3. 設定 Expiration。
 4. 選 Generate token。複製 token。
 5. organization 有 SSO 時,在 token 旁選 Configure SSO,授權 `<ORG>`。
-6. 開一個新的終端機。執行以下指令。在提示處貼上 token(畫面不顯示):
+6. 在 Claude Code 以外開一個新的終端機。執行以下指令。出現提示時貼上 token,按 Enter(畫面不顯示):
 
    ```bash
-   read -rs WF_TOKEN
+   read -rsp "貼上 token 後按 Enter: " WF_TOKEN; echo
+   [ -n "$WF_TOKEN" ] || { echo "沒有讀到 token,停止"; return 1 2>/dev/null || exit 1; }
    for repo in <缺少 secret 的 repo,以空格分隔>; do
      printf '%s' "$WF_TOKEN" | gh secret set PROJECT_TOKEN --repo "$repo"
      printf '%s' "$WF_TOKEN" | gh secret set ORG_AUTOMATION_TOKEN --repo "$repo"
@@ -391,7 +392,7 @@ gh variable set PLANNING_REPO --repo <repo> --body "<PLANNING>"
 
 注意:`PROJECT_TOKEN` 與 `ORG_AUTOMATION_TOKEN` 可以是同一個 token。organization 若限制 classic token 的存取,請 org owner 在 organization 的 Settings → Personal access tokens 允許 classic token。
 
-使用者回覆後,重做盤點步驟 7。每個 repo 都有兩個名稱時,印 `✅ 步驟 7 secret`。仍缺少時,印 ❌ 並列出缺少的 repo 與名稱。
+使用者回覆後,重做盤點步驟 7。注意:`gh secret list` 只看得到名稱,看不到值。使用者若在對話中用 `!` 執行了上面的指令(對話中會出現該指令的輸出),secret 存在但值是空的。這時請使用者在 Claude Code 以外的終端機重做第 6 點。每個 repo 都有兩個名稱時,印 `✅ 步驟 7 secret`。仍缺少時,印 ❌ 並列出缺少的 repo 與名稱。
 
 ### 步驟 9:結尾
 
