@@ -8,10 +8,10 @@ wayfinder-loops 是一個 Claude Code plugin。它用 GitHub Issues 與 GitHub P
 
 ### 用途
 
-wayfinder-loops 讓 agent 做開票、查證、實作、審查與合併批次 PR。人只做兩件事:
+wayfinder-loops 讓 agent 做開 ticket、查證、實作、審查與合併 batch PR。人只做兩件事:
 
-1. 在決策票上選一個選項。
-2. 審查並合併整合 PR。
+1. 在 decision ticket 上選一個選項。
+2. 審查並合併 integration PR。
 
 ### 組成
 
@@ -19,12 +19,12 @@ wayfinder-loops 有五條 loop 與一個 agent。每條 loop 依固定間隔執�
 
 | 名稱 | 種類 | 工作 |
 | --- | --- | --- |
-| cartographer | loop | 把想法寫成 map 與決策票。決策完成後,寫 spec 與實作票。 |
-| resolver | loop | 讀人在決策票上的選擇。記錄結論並關閉決策票。 |
-| researcher | loop | 查證外部事實。把結果寫在決策票上並關閉。 |
-| implementer | loop | 實作實作票,開批次 PR,合併批次 PR 到整合分支,開整合 PR。 |
+| cartographer | loop | 把想法寫成 map 與 decision ticket。決策完成後,寫 spec 與 implementation ticket。 |
+| resolver | loop | 讀人在 decision ticket 上的選擇。記錄結論並關閉 decision ticket。 |
+| researcher | loop | 查證外部事實。把結果寫在 decision ticket 上並關閉。 |
+| implementer | loop | 實作 implementation ticket,開 batch PR,合併 batch PR 到 integration branch,開 integration PR。 |
 | prototyper | loop | 人要求原型時,做原型頁與截圖。 |
-| reviewer | agent | 審查每個批次 PR。修正問題,判斷風險,把 PR 設為 ready。implementer 派出 reviewer。 |
+| reviewer | agent | 審查每個 batch PR。修正問題,判斷風險,把 PR 設為 ready。implementer 派出 reviewer。 |
 
 GitHub label 是唯一的狀態來源。loop 不保存狀態。看板欄位由 workflow 依 label 計算。
 
@@ -32,11 +32,11 @@ GitHub label 是唯一的狀態來源。loop 不保存狀態。看板欄位由 w
 
 ```mermaid
 flowchart LR
-  idea["想法"] --> map["map 與決策票"]
-  map -->|"人選擇選項"| spec["spec 與實作票"]
-  spec --> pr["批次 PR"]
-  pr -->|"reviewer 審查"| branch["整合分支"]
-  branch --> final["整合 PR"]
+  idea["想法"] --> map["map 與 decision ticket"]
+  map -->|"人選擇選項"| spec["spec 與 implementation ticket"]
+  spec --> pr["batch PR"]
+  pr -->|"reviewer 審查"| branch["integration branch"]
+  branch --> final["integration PR"]
   final -->|"人審查並合併"| main["main"]
 ```
 
@@ -46,15 +46,15 @@ flowchart LR
 
 | 名詞 | 意思 |
 | --- | --- |
-| planning repo | 放想法、map、決策票、spec 與 `wayfinder.yml` 的 repo。 |
-| code repo | 放程式碼、實作票與 PR 的 repo。可以有多個。 |
+| planning repo | 放想法、map、decision ticket、spec 與 `wayfinder.yml` 的 repo。 |
+| code repo | 放程式碼、implementation ticket 與 PR 的 repo。可以有多個。 |
 | map | 記錄一個想法的目標、已做的決定與未定問題的 issue。 |
-| 決策票 | map 中一個待決問題的 issue。由人做決定,或由 researcher 查證事實。附有選項表與建議。 |
-| 實作票 | 要求 agent 實作一項變更的 issue。 |
-| 整合分支 | 一個 spec 的所有變更先合併到的分支,名稱為 `spec/<編號>-<名稱>`。 |
-| 批次 PR | 實作票的 PR。目標分支是整合分支。人不審查批次 PR。 |
-| 整合 PR | 從整合分支到 main 的 PR。每個 spec 只有一個。人審查這個 PR。 |
-| 單向門 | 合併後不能撤回的變更。例如:資料庫 migration、資料刪除、權限變更、對外發送訊息。 |
+| decision ticket | map 中一個待決問題的 issue。由人做決定,或由 researcher 查證事實。附有選項表與建議。 |
+| implementation ticket | 要求 agent 實作一項變更的 issue。 |
+| integration branch | 一個 spec 的所有變更先合併到的分支,名稱為 `spec/<編號>-<名稱>`。 |
+| batch PR | implementation ticket 的 PR。目標分支是 integration branch。人不審查 batch PR。 |
+| integration PR | 從 integration branch 到 main 的 PR。每個 spec 只有一個。人審查這個 PR。 |
+| one-way door | 合併後不能撤回的變更。例如:資料庫 migration、資料刪除、權限變更、對外發送訊息。 |
 
 ## 需求
 
@@ -124,7 +124,7 @@ flowchart LR
 
 ## 啟動
 
-警告:每條 loop 只能有一個執行中的 session。兩個相同的 loop 會實作同一張實作票兩次。
+警告:每條 loop 只能有一個執行中的 session。兩個相同的 loop 會實作同一張 implementation ticket 兩次。
 
 1. 開五個終端機。
 2. 在每個終端機,進入 `workspace_dir`,啟動 Claude Code。
@@ -151,7 +151,7 @@ flowchart LR
 
 1. 開啟看板。
 2. 開啟「⏳ 等你決定」欄中的卡片。
-3. 讀決策票中的選項表與建議。
+3. 讀 decision ticket 中的選項表與建議。
 4. 加一個 label:
 
    | Label | 意思 |
@@ -162,16 +162,16 @@ flowchart LR
 
 注意:也可以用留言回覆。留言要指出一個選項。
 
-### 審查整合 PR
+### 審查 integration PR
 
 1. 開啟看板。
-2. 開啟「👀 待你 review」欄中的整合 PR。
+2. 開啟「👀 待你 review」欄中的 integration PR。
 3. 讀 PR 說明最上方的「審這裡」清單。
-4. 審查清單中的每個單向門。
+4. 審查清單中的每個 one-way door。
 5. 確認 implementer 的報告寫著「落後 0、閘門綠」。
 6. 合併 PR。
 
-警告:只有人可以合併整合 PR。不要讓 agent 合併整合 PR。
+警告:只有人可以合併 integration PR。不要讓 agent 合併 integration PR。
 
 ## 更新
 
@@ -201,10 +201,10 @@ flowchart LR
 | --- | --- | --- |
 | 看板卡片不移動 | Status 值與清單不同,或缺少 `PROJECT_URL`、`PROJECT_TOKEN` | 比對 Status 值。檢查 variable 與 secret。 |
 | loop 看不到看板上的卡片 | 卡片是 draft,不是 issue | 在卡片上選 Convert to issue,選 planning repo。 |
-| 實作票停在「📋 排隊中」 | 升級事件沒有觸發 | 在該 repo 的 Actions 頁,手動執行 `promote-queued`。 |
+| implementation ticket 停在「📋 排隊中」 | 升級事件沒有觸發 | 在該 repo 的 Actions 頁,手動執行 `promote-queued`。 |
 | `promote-queued` 失敗 | 缺少 `PLANNING_REPO` variable | 設定 `PLANNING_REPO`。 |
-| 實作票有 `agent:blocked` | 實作或審查失敗 | 讀實作票上 `🤖 [implementer]` 或 `🤖 [reviewer]` 的留言。修正後移除 `agent:blocked`。 |
-| 同一張實作票被實作兩次 | 同一條 loop 有兩個 session | 關閉一個 session。 |
+| implementation ticket 有 `agent:blocked` | 實作或審查失敗 | 讀 implementation ticket 上 `🤖 [implementer]` 或 `🤖 [reviewer]` 的留言。修正後移除 `agent:blocked`。 |
+| 同一張 implementation ticket 被實作兩次 | 同一條 loop 有兩個 session | 關閉一個 session。 |
 
 ## 參考
 
